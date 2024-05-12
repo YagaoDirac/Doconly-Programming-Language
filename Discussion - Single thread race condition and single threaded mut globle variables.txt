@@ -1,0 +1,65 @@
+https://github.com/hsutter/cppfront/discussions/1065
+
+Idk if this is already solved in cpp2, but I don't believe most people understand this problem correctly and enough.
+
+What is single thread race condition:
+The reason race condition exists is because in computer, data can only be copied to register and modified and then copied back to memory. If 2 thread copy the same data, increase, then copy back, it's a race condition. But this problem doesn't have to rely on multi thread environment. If we do the same thing in single thread (you have to write some extra code to create this bug), it also happens in similar way and harm in the exactly same way. 
+In SAFE Rust, Idk how to create this single thread race condition. I tried it with unsafe, it's really unsafe. You only need the unsafe scope to modify the mut globle variables.
+
+An example and why it's dangerous:
+Sorry for all the bugs in the code:)
+static mut GLOBAL_VAR:...
+```
+fn main(){
+//calc new result
+//store new result back into GLOBAL_VAR
+modify_global();
+}
+```
+Assuming we already implemented the modify_global function. It modifies the globle_var.
+Sometimes, it's very easy to get confused with the sequence of all the lines, for idk what reason. Actually sometimes, it's unavoidable. Idk, maybe I'm noob.
+The result can be:
+```
+fn main(){
+//calc new result
+modify_global(); // This line is moved up
+//store new result back into GLOBAL_VAR// this line down.
+}
+```
+This is a very typecal single thread race condition. But luckily, in SAFE Rust, globle is not allowed. 
+What is the real problem? Idk how much people hate Rust's safety features. But I know most people don't really understand the danger here. Most of them simply wrap the code with unsafe when they want to modify the globle variables, without any necessary manual checking. In the previous case, most people simple go the unsafe way, and never check after move the lines.
+
+How to write purely safe Rust with mutable globle variables:
+```
+//No real mut globle static at all.
+fn main(){
+let mut var global_var:...
+//... not important
+modify_global(&mut global_var); //Notice the param list
+//... not important
+}
+```
+You have to pass the mut ref into the function. In Rust, to do that, you have to drop (with scope or the drop function) all the ref to the global_var, and regain them after the call to modify_global function.
+But the problem is, every function has to keep the param there, unless itself and all the function it's gonna call don't care the global_var at all. 
+
+A naive suggestion:
+A flag may help, like, no_global:
+void func(){
+//you can use globle here.
+//This is by default.
+}
+void func()[no_global]{
+//you CAN NOT use globle here.
+}
+If we do this in Rust, we have to care the timing of dropping ref. I know it's a bit tricky, but it's never any trickier than other cases people handle everyday.
+
+
+
+
+
+
+
+
+
+
+
